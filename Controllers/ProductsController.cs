@@ -1,69 +1,149 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using ProductsWithRouting.Models;
 using ProductsWithRouting.Services;
 
 namespace ProductsWithRouting.Controllers
 {
+    [Route("products")]
+    [Route("items")]
     public class ProductsController : Controller
     {
-        private List<Product> myProducts;
+        private readonly List<Product> products;
 
         public ProductsController(Data data)
         {
-            myProducts = data.Products;
+            products = data.Products;
         }
 
-        public IActionResult Index(int filterId, string filtername)
+        [HttpGet("")]
+        [HttpGet("index")]
+        public IActionResult Index(int? filterId, string filtername)
         {
-            return View(myProducts);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest();
+            }
+
+            List<Product> result = new List<Product>();
+            foreach (Product product in products)
+            {
+                bool matchesId = filterId == null || product.Id == filterId;
+                bool matchesName = string.IsNullOrEmpty(filtername)
+                    || product.Name.Contains(filtername, StringComparison.OrdinalIgnoreCase);
+
+                if (matchesId && matchesName)
+                {
+                    result.Add(product);
+                }
+            }
+            return View(result);
         }
 
-        public IActionResult View(int id)
+        private Product FindProduct(int id)
         {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
+            foreach (Product product in products)
+            {
+                if (product.Id == id)
+                {
+                    return product;
+                }
+            }
+            return null;
         }
-        [HttpGet]
+
+        [HttpGet("{id:int}")]
+        [HttpGet("view/{id:int}")]
+        public IActionResult Details(int id)
+        {
+            Product product = FindProduct(id);
+            if (product == null)
+            {
+                return RedirectToAction("ProductNotFound");
+            }
+            return View(product);
+        }
+
+        [HttpGet("edit/{id:int}")]
         public IActionResult Edit(int id)
         {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
-        } 
-        [HttpPost]
-        public IActionResult Edit(Product product)
-        {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
-        } 
-        
-        [HttpPost]
-        public IActionResult Create(Product product)
-        {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
+            Product product = FindProduct(id);
+            if (product == null)
+            {
+                return RedirectToAction("ProductNotFound");
+            }
+            return View(product);
         }
 
+        [HttpPost("edit/{id:int}")]
+        [ValidateAntiForgeryToken]
+        public IActionResult Edit([FromRoute] int id, Product product)
+        {
+            Product existing = FindProduct(id);
+            if (existing == null)
+            {
+                return RedirectToAction("ProductNotFound");
+            }
+
+            product.Id = id;
+            if (!ModelState.IsValid)
+            {
+                return View(product);
+            }
+
+            existing.Name = product.Name;
+            existing.Description = product.Description;
+            return RedirectToAction("Index");
+        }
+
+        [HttpGet("create")]
+        [HttpGet("new")]
         public IActionResult Create()
         {
-            //Please, add your implementation of the method
-            return View(/*TODO: pass corresponding product here*/);
+            return View(new Product());
         }
 
+        [HttpPost("create")]
+        [HttpPost("new")]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(Product product)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(product);
+            }
+
+            int nextId = 1;
+            foreach (Product item in products)
+            {
+                if (item.Id >= nextId)
+                {
+                    nextId = item.Id + 1;
+                }
+            }
+            product.Id = nextId;
+            products.Add(product);
+            return RedirectToAction("Index");
+        }
+
+        [HttpGet("delete/{id:int}")]
         public IActionResult Delete(int id)
         {
-            //Please, add your implementation of the method
-            return View("Index"/*TODO: pass corresponding product here*/);
+            Product product = FindProduct(id);
+            if (product == null)
+            {
+                return RedirectToAction("ProductNotFound");
+            }
+            products.Remove(product);
+            return RedirectToAction("Index");
         }
 
-        public IActionResult Error()
+        [HttpGet("not-found")]
+        public IActionResult ProductNotFound()
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            Response.StatusCode = 404;
+            return View("NotFound");
         }
     }
 }

@@ -14,3 +14,17 @@
 10. Filter products list by parameter(s) that can be set in query string
 11. When there isn't a product with the corresponding id then redirect to custom 404 error page which will contain the text "The product does not exist" and a link to the list of all products.
 12. The admin part should show a list of users. It is shown only if the request is with the parameter equal to "df2323eoT". The parameter should not be shown neither as route parameter nor in query string, it should be sent in the query of a request body. (url should look like this: ../users/index). If there is no such parameter, please, return the user unauthorized result.
+
+## Run
+
+Requires .NET 8 SDK. Run `dotnet run --project ProductsWithRouting.csproj`.
+Products are stored in memory and reset when the application restarts.
+
+- List: `/products`, `/products/index`, `/items`, `/items/index`.
+- Details: `/products/1`; edit: `/products/edit/1`; delete: `/products/delete/1`.
+- Create: `/products/create` or `/products/new`.
+- Filter: `/products?filterId=1&filtername=Product` (either parameter or both).
+- Missing products redirect to a custom page with HTTP status 404.
+- Users: `curl -X POST http://localhost:5000/users/index -d "id=df2323eoT"`.
+  Replace the port with the application's listening port. The key is accepted only
+  from a form-encoded request body; a route or query-string value returns 401.
